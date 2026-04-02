@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>TV Remota (modo direto)</title>
+  <title>TV Remota</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 
@@ -32,8 +32,10 @@
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
 <script>
+  // 🔥 Firebase config
   var firebaseConfig = {
     apiKey: "AIzaSyD9Lz5Ayn1_zV8u8SWizCL5LSXp6Huzu8Y",
     authDomain: "tv-tv-f74b1.firebaseapp.com",
@@ -46,8 +48,9 @@
 
   var player = document.getElementById("player");
   var overlay = document.getElementById("overlay");
+  var hls = null;
 
-  // ▶️ Início (play + fullscreen)
+  // 🎬 Controle inicial (play + fullscreen)
   overlay.addEventListener("click", function () {
     overlay.style.display = "none";
 
@@ -62,21 +65,63 @@
     }
   });
 
-  // 🔄 Atualização do vídeo
+  // 🔄 Atualização em tempo real
   db.ref("videoUrl").on("value", function(snapshot) {
     var url = snapshot.val();
     if (!url) return;
 
+    // Fade suave
     player.style.opacity = 0;
 
     setTimeout(function() {
-      player.src = url;
-      player.load();
-      player.play().catch(function(){});
+
+      // Limpa HLS anterior
+      if (hls) {
+        hls.destroy();
+        hls = null;
+      }
+
+      // 📡 Se for HLS (live)
+      if (url.includes(".m3u8")) {
+
+        if (Hls.isSupported()) {
+          hls = new Hls({
+            liveSyncDurationCount: 3
+          });
+
+          hls.loadSource(url);
+          hls.attachMedia(player);
+
+          hls.on(Hls.Events.MANIFEST_PARSED, function() {
+            player.play();
+          });
+
+        } else if (player.canPlayType("application/vnd.apple.mpegurl")) {
+          player.src = url;
+          player.addEventListener("loadedmetadata", function() {
+            player.play();
+          });
+        }
+
+      } else {
+        // 🎥 Vídeo normal
+        player.src = url;
+        player.load();
+        player.play();
+      }
 
       player.style.opacity = 1;
+
     }, 300);
   });
+
+  // 🔁 Reconectar automaticamente se travar live
+  setInterval(function() {
+    if (hls && player.readyState === 0) {
+      console.log("Reconectando stream...");
+      hls.startLoad();
+    }
+  }, 5000);
 
 </script>
 
