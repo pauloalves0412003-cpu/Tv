@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Player remoto</title>
+</head>
+<body>
+
+<h2>Player remoto</h2>
+
+<video id="player" controls width="600">
+  <source id="source" src="" type="video/mp4">
+</video>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<script>
+  var firebaseConfig = {
+    apiKey: "AIzaSyD9Lz5Ayn1_zV8u8SWizCL5LSXp6Huzu8Y",
+    authDomain: "tv-tv-f74b1.firebaseapp.com",
+    databaseURL: "https://tv-tv-f74b1-default-rtdb.firebaseio.com/",
+    projectId: "tv-tv-f74b1"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+
+  var db = firebase.database();
+
+  db.ref("videoUrl").on("value", function(snapshot) {
+    var url = snapshot.val();
+
+    if (!url) return;
+
+    var player = document.getElementById("player");
+    var source = document.getElementById("source");
+
+    source.src = url;
+    player.load();
+    player.play();
+  });
+</script>
+
+</body>
+</html>
