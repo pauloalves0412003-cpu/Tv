@@ -26,7 +26,27 @@
   Toque para iniciar
 </div>
 
-<video id="player" autoplay muted playsinline
+<!-- Botão abrir -->
+<button id="openBtn" style="
+  position:fixed;
+  top:10px;
+  right:10px;
+  z-index:20;
+  padding:8px 12px;
+  font-size:14px;
+  background:rgba(0,0,0,0.6);
+  color:white;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+">
+  Abrir em nova guia
+</button>
+
+<video id="player"
+  autoplay
+  muted
+  playsinline
   style="width:100vw;height:100vh;object-fit:cover;background:black;">
 </video>
 
@@ -35,7 +55,6 @@
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
 <script>
-  // 🔥 Firebase config
   var firebaseConfig = {
     apiKey: "AIzaSyD9Lz5Ayn1_zV8u8SWizCL5LSXp6Huzu8Y",
     authDomain: "tv-tv-f74b1.firebaseapp.com",
@@ -48,14 +67,21 @@
 
   var player = document.getElementById("player");
   var overlay = document.getElementById("overlay");
-  var hls = null;
+  var openBtn = document.getElementById("openBtn");
 
-  // 🎬 Controle inicial (play + fullscreen)
+  var hls = null;
+  var currentUrl = "";
+
+  // Watchdog
+  var ultimoTempo = 0;
+  var travadoDesde = null;
+  var jaReproduziu = false;
+
+  // ▶️ iniciar
   overlay.addEventListener("click", function () {
     overlay.style.display = "none";
 
     player.muted = false;
-
     player.play().catch(function(){});
 
     if (player.requestFullscreen) {
@@ -65,23 +91,36 @@
     }
   });
 
-  // 🔄 Atualização em tempo real
+  // 🔄 Firebase
   db.ref("videoUrl").on("value", function(snapshot) {
     var url = snapshot.val();
     if (!url) return;
 
-    // Fade suave
+    currentUrl = url;
+    jaReproduziu = false;
+    travadoDesde = null;
+
+    trocarVideo(url);
+  });
+
+  // 🔗 Botão abrir
+  openBtn.addEventListener("click", function() {
+    if (currentUrl) {
+      window.open(currentUrl, "_blank");
+    }
+  });
+
+  function trocarVideo(url) {
+
     player.style.opacity = 0;
 
     setTimeout(function() {
 
-      // Limpa HLS anterior
       if (hls) {
         hls.destroy();
         hls = null;
       }
 
-      // 📡 Se for HLS (live)
       if (url.includes(".m3u8")) {
 
         if (Hls.isSupported()) {
@@ -104,7 +143,6 @@
         }
 
       } else {
-        // 🎥 Vídeo normal
         player.src = url;
         player.load();
         player.play();
@@ -113,11 +151,64 @@
       player.style.opacity = 1;
 
     }, 300);
+  }
+
+  // 🎬 Eventos do player
+
+  player.addEventListener("playing", function() {
+    jaReproduziu = true;
+    travadoDesde = null;
   });
 
-  // 🔁 Reconectar automaticamente se travar live
+  player.addEventListener("timeupdate", function() {
+    if (player.currentTime !== ultimoTempo) {
+      ultimoTempo = player.currentTime;
+      travadoDesde = null;
+    }
+  });
+
+  player.addEventListener("waiting", function() {
+    if (jaReproduziu) {
+      travadoDesde = Date.now();
+    }
+  });
+
+  // 🔁 Watchdog (5 segundos)
   setInterval(function() {
-    if (hls && player.readyState === 0) {
+
+    if (!jaReproduziu) return;
+    if (!travadoDesde) return;
+
+    var tempoTravado = (Date.now() - travadoDesde) / 1000;
+
+    if (tempoTravado > 5) {
+      console.log("Stream travado. Recarregando...");
+      recarregarStream();
+      travadoDesde = null;
+    }
+
+  }, 3000);
+
+  function recarregarStream() {
+
+    if (!currentUrl) return;
+
+    if (hls) {
+      hls.destroy();
+      hls = null;
+    }
+
+    player.src = "";
+    player.load();
+
+    setTimeout(function() {
+      trocarVideo(currentUrl);
+    }, 500);
+  }
+
+  // 🔁 fallback extra para live travada
+  setInterval(function() {
+    if (hls && player.readyState === 0 && jaReproduziu) {
       console.log("Reconectando stream...");
       hls.startLoad();
     }
@@ -126,4 +217,4 @@
 </script>
 
 </body>
-</html>
+  </html>
