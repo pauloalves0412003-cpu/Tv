@@ -55,6 +55,7 @@
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
 <script>
+  // 🔥 Firebase
   var firebaseConfig = {
     apiKey: "AIzaSyD9Lz5Ayn1_zV8u8SWizCL5LSXp6Huzu8Y",
     authDomain: "tv-tv-f74b1.firebaseapp.com",
@@ -72,16 +73,28 @@
   var hls = null;
   var currentUrl = "";
 
+  // 🔊 Boost
+  var audioContext = null;
+  var gainNode = null;
+  var boostAtivo = false;
+
   // Watchdog
   var ultimoTempo = 0;
   var travadoDesde = null;
   var jaReproduziu = false;
 
-  // ▶️ iniciar
+  // ▶️ Início
   overlay.addEventListener("click", function () {
     overlay.style.display = "none";
 
     player.muted = false;
+    player.volume = 1;
+
+    // liberar áudio para WebAudio
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    ctx.resume();
+    ctx.close();
+
     player.play().catch(function(){});
 
     if (player.requestFullscreen) {
@@ -91,7 +104,7 @@
     }
   });
 
-  // 🔄 Firebase
+  // 🔄 Firebase vídeo
   db.ref("videoUrl").on("value", function(snapshot) {
     var url = snapshot.val();
     if (!url) return;
@@ -103,6 +116,21 @@
     trocarVideo(url);
   });
 
+  // 🔊 Firebase boost
+  db.ref("boostAudio").on("value", function(snapshot) {
+    var valor = snapshot.val();
+
+    if (valor === true && !boostAtivo) {
+      ativarBoost();
+      boostAtivo = true;
+    }
+
+    if (valor === false && boostAtivo) {
+      desativarBoost();
+      boostAtivo = false;
+    }
+  });
+
   // 🔗 Botão abrir
   openBtn.addEventListener("click", function() {
     if (currentUrl) {
@@ -110,6 +138,7 @@
     }
   });
 
+  // 🔄 Troca de vídeo
   function trocarVideo(url) {
 
     player.style.opacity = 0;
@@ -153,8 +182,31 @@
     }, 300);
   }
 
-  // 🎬 Eventos do player
+  // 🔊 Boost ON
+  function ativarBoost() {
+    if (audioContext) return;
 
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    var source = audioContext.createMediaElementSource(player);
+    gainNode = audioContext.createGain();
+
+    gainNode.gain.value = 1.8;
+
+    source.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+  }
+
+  // 🔊 Boost OFF
+  function desativarBoost() {
+    if (!audioContext) return;
+
+    audioContext.close();
+    audioContext = null;
+    gainNode = null;
+  }
+
+  // 🎬 Eventos
   player.addEventListener("playing", function() {
     jaReproduziu = true;
     travadoDesde = null;
@@ -173,7 +225,7 @@
     }
   });
 
-  // 🔁 Watchdog (5 segundos)
+  // 🔁 Watchdog (5s)
   setInterval(function() {
 
     if (!jaReproduziu) return;
@@ -182,7 +234,6 @@
     var tempoTravado = (Date.now() - travadoDesde) / 1000;
 
     if (tempoTravado > 5) {
-      console.log("Stream travado. Recarregando...");
       recarregarStream();
       travadoDesde = null;
     }
@@ -206,10 +257,9 @@
     }, 500);
   }
 
-  // 🔁 fallback extra para live travada
+  // 🔁 Fallback live
   setInterval(function() {
     if (hls && player.readyState === 0 && jaReproduziu) {
-      console.log("Reconectando stream...");
       hls.startLoad();
     }
   }, 5000);
@@ -217,4 +267,4 @@
 </script>
 
 </body>
-  </html>
+</html>
