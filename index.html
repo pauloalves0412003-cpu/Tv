@@ -91,27 +91,24 @@
   var hls = null;
   var currentUrl = "";
 
-  // Volume boost
-  var audioContext;
-  var sourceNode;
-  var gainNode;
+  // 🔊 Áudio (corrigido)
+  var audioContext = null;
+  var gainNode = null;
   var volumePercent = 100;
 
-  // Watchdog
-  var ultimoTempo = 0;
-  var travadoDesde = null;
-  var jaReproduziu = false;
-
-  // 🔊 Boost
   function iniciarAudioBoost() {
     if (!audioContext) {
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-      sourceNode = audioContext.createMediaElementSource(player);
+      var source = audioContext.createMediaElementSource(player);
       gainNode = audioContext.createGain();
 
-      sourceNode.connect(gainNode);
+      source.connect(gainNode);
       gainNode.connect(audioContext.destination);
+    }
+
+    if (audioContext.state === "suspended") {
+      audioContext.resume();
     }
 
     atualizarVolume();
@@ -120,9 +117,7 @@
   function atualizarVolume() {
     if (!gainNode) return;
 
-    var ganho = volumePercent / 100;
-    gainNode.gain.value = ganho;
-
+    gainNode.gain.value = volumePercent / 100;
     document.getElementById("volValue").innerText = volumePercent + "%";
   }
 
@@ -139,6 +134,11 @@
       atualizarVolume();
     }
   });
+
+  // Watchdog
+  var ultimoTempo = 0;
+  var travadoDesde = null;
+  var jaReproduziu = false;
 
   // ▶️ iniciar
   overlay.addEventListener("click", iniciarSistema);
@@ -164,14 +164,14 @@
     }
   }
 
-  // 🔥 tecla F
+  // tecla F
   document.addEventListener("keydown", function(e) {
     if (e.key.toLowerCase() === "f") {
       entrarFullscreen();
     }
   });
 
-  // 🔄 Firebase
+  // Firebase
   db.ref("videoUrl").on("value", function(snapshot) {
     var url = snapshot.val();
     if (!url) return;
@@ -183,7 +183,7 @@
     trocarVideo(url);
   });
 
-  // 🔗 abrir link
+  // abrir link
   openBtn.addEventListener("click", function() {
     if (currentUrl) {
       window.open(currentUrl, "_blank");
@@ -233,7 +233,7 @@
     }, 300);
   }
 
-  // 🎬 Eventos
+  // Eventos
   player.addEventListener("playing", function() {
     jaReproduziu = true;
     travadoDesde = null;
@@ -252,7 +252,7 @@
     }
   });
 
-  // 🔁 Watchdog (5s)
+  // Watchdog 5s
   setInterval(function() {
 
     if (!jaReproduziu) return;
@@ -285,7 +285,7 @@
     }, 500);
   }
 
-  // 🔁 fallback live
+  // fallback live
   setInterval(function() {
     if (hls && player.readyState === 0 && jaReproduziu) {
       console.log("Reconectando stream...");
