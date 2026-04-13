@@ -40,27 +40,8 @@
   border-radius:6px;
   cursor:pointer;
 ">
-  Abrir
+  Abrir em nova guia
 </button>
-
-<!-- Controle de volume -->
-<div style="
-  position:fixed;
-  top:50px;
-  right:10px;
-  z-index:20;
-  background:rgba(0,0,0,0.6);
-  color:white;
-  padding:8px;
-  border-radius:6px;
-  display:flex;
-  align-items:center;
-  gap:6px;
-">
-  <button id="volDown">-</button>
-  <span id="volValue">100%</span>
-  <button id="volUp">+</button>
-</div>
 
 <video id="player"
   autoplay
@@ -91,87 +72,26 @@
   var hls = null;
   var currentUrl = "";
 
-  // 🔊 Áudio (corrigido)
-  var audioContext = null;
-  var gainNode = null;
-  var volumePercent = 100;
-
-  function iniciarAudioBoost() {
-    if (!audioContext) {
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-      var source = audioContext.createMediaElementSource(player);
-      gainNode = audioContext.createGain();
-
-      source.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-    }
-
-    if (audioContext.state === "suspended") {
-      audioContext.resume();
-    }
-
-    atualizarVolume();
-  }
-
-  function atualizarVolume() {
-    if (!gainNode) return;
-
-    gainNode.gain.value = volumePercent / 100;
-    document.getElementById("volValue").innerText = volumePercent + "%";
-  }
-
-  document.getElementById("volUp").addEventListener("click", function() {
-    if (volumePercent < 300) {
-      volumePercent += 10;
-      atualizarVolume();
-    }
-  });
-
-  document.getElementById("volDown").addEventListener("click", function() {
-    if (volumePercent > 0) {
-      volumePercent -= 10;
-      atualizarVolume();
-    }
-  });
-
   // Watchdog
   var ultimoTempo = 0;
   var travadoDesde = null;
   var jaReproduziu = false;
 
   // ▶️ iniciar
-  overlay.addEventListener("click", iniciarSistema);
-
-  function iniciarSistema() {
+  overlay.addEventListener("click", function () {
     overlay.style.display = "none";
 
     player.muted = false;
-    player.volume = 1.0;
-
-    iniciarAudioBoost();
-
     player.play().catch(function(){});
 
-    entrarFullscreen();
-  }
-
-  function entrarFullscreen() {
     if (player.requestFullscreen) {
       player.requestFullscreen();
     } else if (player.webkitRequestFullscreen) {
       player.webkitRequestFullscreen();
     }
-  }
-
-  // tecla F
-  document.addEventListener("keydown", function(e) {
-    if (e.key.toLowerCase() === "f") {
-      entrarFullscreen();
-    }
   });
 
-  // Firebase
+  // 🔄 Firebase
   db.ref("videoUrl").on("value", function(snapshot) {
     var url = snapshot.val();
     if (!url) return;
@@ -183,7 +103,7 @@
     trocarVideo(url);
   });
 
-  // abrir link
+  // 🔗 Botão abrir
   openBtn.addEventListener("click", function() {
     if (currentUrl) {
       window.open(currentUrl, "_blank");
@@ -233,7 +153,8 @@
     }, 300);
   }
 
-  // Eventos
+  // 🎬 Eventos do player
+
   player.addEventListener("playing", function() {
     jaReproduziu = true;
     travadoDesde = null;
@@ -252,7 +173,7 @@
     }
   });
 
-  // Watchdog 5s
+  // 🔁 Watchdog (5 segundos)
   setInterval(function() {
 
     if (!jaReproduziu) return;
@@ -285,7 +206,7 @@
     }, 500);
   }
 
-  // fallback live
+  // 🔁 fallback extra para live travada
   setInterval(function() {
     if (hls && player.readyState === 0 && jaReproduziu) {
       console.log("Reconectando stream...");
