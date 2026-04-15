@@ -7,7 +7,6 @@
 
 <body style="margin:0; background:black; overflow:hidden;">
 
-<!-- Tela inicial -->
 <div id="overlay" style="
   position:fixed;
   top:0;
@@ -26,7 +25,6 @@
   Toque para iniciar
 </div>
 
-<!-- Botão abrir -->
 <button id="openBtn" style="
   position:fixed;
   top:10px;
@@ -55,11 +53,23 @@
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
 <script>
+  // 🔍 pegar parâmetros da URL
+  var params = new URLSearchParams(window.location.search);
+
+  var apiKey = params.get("key");
+  var databaseURL = params.get("db");
+
+  if (!apiKey || !databaseURL) {
+    alert("Parâmetros 'key' e 'db' são obrigatórios.");
+    throw new Error("Configuração Firebase ausente");
+  }
+
+  // 🔥 Firebase config dinâmico
   var firebaseConfig = {
-    apiKey: "AIzaSyD9Lz5Ayn1_zV8u8SWizCL5LSXp6Huzu8Y",
-    authDomain: "tv-tv-f74b1.firebaseapp.com",
-    databaseURL: "https://tv-tv-f74b1-default-rtdb.firebaseio.com/",
-    projectId: "tv-tv-f74b1"
+    apiKey: apiKey,
+    authDomain: "placeholder.firebaseapp.com",
+    databaseURL: databaseURL,
+    projectId: "placeholder"
   };
 
   firebase.initializeApp(firebaseConfig);
@@ -72,12 +82,10 @@
   var hls = null;
   var currentUrl = "";
 
-  // Watchdog
   var ultimoTempo = 0;
   var travadoDesde = null;
   var jaReproduziu = false;
 
-  // ▶️ iniciar
   overlay.addEventListener("click", function () {
     overlay.style.display = "none";
 
@@ -91,7 +99,6 @@
     }
   });
 
-  // 🔄 Firebase
   db.ref("videoUrl").on("value", function(snapshot) {
     var url = snapshot.val();
     if (!url) return;
@@ -103,7 +110,6 @@
     trocarVideo(url);
   });
 
-  // 🔗 Botão abrir
   openBtn.addEventListener("click", function() {
     if (currentUrl) {
       window.open(currentUrl, "_blank");
@@ -153,8 +159,6 @@
     }, 300);
   }
 
-  // 🎬 Eventos do player
-
   player.addEventListener("playing", function() {
     jaReproduziu = true;
     travadoDesde = null;
@@ -173,7 +177,6 @@
     }
   });
 
-  // 🔁 Watchdog (5 segundos)
   setInterval(function() {
 
     if (!jaReproduziu) return;
@@ -206,10 +209,8 @@
     }, 500);
   }
 
-  // 🔁 fallback extra para live travada
   setInterval(function() {
     if (hls && player.readyState === 0 && jaReproduziu) {
-      console.log("Reconectando stream...");
       hls.startLoad();
     }
   }, 5000);
